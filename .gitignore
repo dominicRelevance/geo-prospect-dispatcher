@@ -1,0 +1,4 @@
+vendor/
+credentials/
+geo_prospect_api/
+.DS_Store
