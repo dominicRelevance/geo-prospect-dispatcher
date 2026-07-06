@@ -181,7 +181,7 @@ foreach ($rows as $index => $row) {
     $client = trim($row[colIndex($colMap, 'client') ?? 0] ?? '');
     $data   = trim($row[colIndex($colMap, 'data') ?? 1] ?? '');
     $status = strtoupper(trim($row[colIndex($colMap, 'run status', 'status') ?? 2] ?? ''));
-    $email  = trim($row[colIndex($colMap, 'email') ?? 5] ?? '');
+    $email  = trim($row[colIndex($colMap, 'emailreport', 'email report', 'email') ?? 8] ?? '');
 
     if ($status !== 'RUN') {
         continue;
