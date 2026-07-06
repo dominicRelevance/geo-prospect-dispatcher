@@ -79,7 +79,7 @@ function updateRow(
     array $colMap
 ): void {
     $writes = [
-        ['status', 'status'],                          $status,
+        ['run status', 'status'],                       $status,
         ['pdf report', 'pdf_report', 'report', 'pdf'], $pdfUrl,
         ['date', 'date completed', 'completed'],        date('Y-m-d H:i:s'),
     ];
@@ -180,7 +180,7 @@ foreach ($rows as $index => $row) {
 
     $client = trim($row[colIndex($colMap, 'client') ?? 0] ?? '');
     $data   = trim($row[colIndex($colMap, 'data') ?? 1] ?? '');
-    $status = strtoupper(trim($row[colIndex($colMap, 'status') ?? 2] ?? ''));
+    $status = strtoupper(trim($row[colIndex($colMap, 'run status', 'status') ?? 2] ?? ''));
     $email  = trim($row[colIndex($colMap, 'email') ?? 5] ?? '');
 
     if ($status !== 'RUN') {
