@@ -3,7 +3,8 @@
 // Copy this file to config.php — it auto-detects local vs live from the HOME path.
 // To add a new environment: extend the $_live detection logic below.
 
-$_live = str_contains((string) getenv('HOME'), 'u65-1fm4wrgjtvly');
+// SiteGround PHP sees paths as /home/customer/ regardless of the actual username
+$_live = str_contains(__DIR__, '/home/customer');
 
 define('SPREADSHEET_ID',   'YOUR_GOOGLE_SHEET_ID');
 define('SHEET_NAME',       'Jobs');
@@ -12,7 +13,7 @@ define('CREDENTIALS_FILE', __DIR__ . '/credentials/service-account.json');
 define('GEO_PROSPECT_API_URL', 'https://YOUR-APP.railway.app/generate-report');
 
 define('REPORTS_DIR', $_live
-    ? '/home/u65-1fm4wrgjtvly/www/yourdomain.com/reports/'
+    ? '/home/customer/www/yourdomain.com/reports/'
     : __DIR__ . '/reports/'
 );
 define('REPORTS_URL', $_live
