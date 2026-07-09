@@ -201,7 +201,65 @@ function sendEmail(string $toEmail, string $clientName, string $pdfUrl, string $
     $mail->send();
 }
 
+/** DEBUG_MODE only — attaches the bundled template PDF directly rather
+ * than linking to a geo-prospect-hosted URL, since debug mode never
+ * calls geo-prospect at all. */
+function sendTemplateEmail(string $toEmail, string $clientName): void
+{
+    if (SMTP_HOST === '' && ON_RAILWAY) {
+        logMsg("  SMTP not configured — skipping email to $toEmail");
+        return;
+    }
+
+    $mail = new PHPMailer(true);
+    configureMailer($mail);
+    $mail->setFrom(SMTP_FROM, SMTP_FROM_NAME);
+    $mail->addAddress($toEmail);
+    $mail->Subject = "[DEBUG] Your AI Visibility Report is ready — $clientName";
+    $mail->isHTML(true);
+    $mail->addAttachment(TEMPLATE_PDF_PATH, "{$clientName}_AI_Visibility_Report_TEMPLATE.pdf");
+    $mail->Body    = "
+        <p>Hi,</p>
+        <p><strong>[DEBUG MODE]</strong> This is a template report for <strong>{$clientName}</strong> —
+        the dispatcher pipeline (Sheet → job → email) is working end-to-end.
+        This is not a real audit; geo-prospect was not called.</p>
+    ";
+    $mail->AltBody = "[DEBUG MODE] Template report for {$clientName} attached. "
+        . "Dispatcher pipeline test — not a real audit.";
+    $mail->send();
+}
+
 // ── Row processing ──────────────────────────────────────────────────────────────
+
+/** DEBUG_MODE only — skips the geo-prospect call entirely and goes
+ * straight to DONE with the bundled template PDF, so the Sheet + email
+ * plumbing can be demoed/tested independently of geo-prospect being
+ * deployed or working. */
+function debugRow(Google\Service\Sheets $service, int $rowNumber, array $row, array $colMap): void
+{
+    $clientName = cell($row, $colMap, 'client (company name)', 'client')
+        ?: cell($row, $colMap, 'domain') ?: 'Demo Client';
+    $email = cell($row, $colMap, 'emailreport', 'email report', 'email');
+
+    logMsg("Row $rowNumber: DEBUG_MODE — sending template PDF, skipping geo-prospect call");
+
+    updateRow($service, $rowNumber, [
+        [['run status', 'status'], 'DONE'],
+        [['pdf_report', 'pdf report'], '[DEBUG MODE] template PDF emailed'],
+        [['date', 'date completed', 'completed'], date('Y-m-d H:i:s')],
+    ], $colMap);
+
+    if ($email) {
+        try {
+            sendTemplateEmail($email, $clientName);
+            logMsg("Row $rowNumber: DEBUG template email sent to $email");
+        } catch (Exception $e) {
+            logMsg("Row $rowNumber: DEBUG email FAILED — " . $e->getMessage());
+        }
+    } else {
+        logMsg("Row $rowNumber: DEBUG_MODE — no email address on row, skipping send");
+    }
+}
 
 /** RUN row with no job yet: build inputs from the sheet, start the audit,
  * flip the row to PROCESSING with the returned job_id. */
@@ -329,13 +387,18 @@ $headers = array_shift($rows);
 $colMap  = buildColMap($headers);
 
 logMsg("Columns found: " . implode(', ', array_keys($colMap)));
+if (DEBUG_MODE) {
+    logMsg("DEBUG_MODE is ON — RUN rows will get a template PDF, geo-prospect will not be called");
+}
 
 foreach ($rows as $index => $row) {
     $rowNumber = $index + 2; // +2 because we shifted the header and rows are 1-indexed
     $row       = array_pad($row, count($headers), '');
     $status    = strtoupper(cell($row, $colMap, 'run status', 'status'));
 
-    if ($status === 'RUN') {
+    if ($status === 'RUN' && DEBUG_MODE) {
+        debugRow($service, $rowNumber, $row, $colMap);
+    } elseif ($status === 'RUN') {
         startRow($service, $rowNumber, $row, $colMap);
     } elseif ($status === 'PROCESSING') {
         pollRow($service, $rowNumber, $row, $colMap);

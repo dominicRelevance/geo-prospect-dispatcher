@@ -51,3 +51,10 @@ define('SMTP_HOST',     envOr('SMTP_HOST', ''));
 define('SMTP_PORT',     (int) envOr('SMTP_PORT', 587));
 define('SMTP_USER',     envOr('SMTP_USER', ''));
 define('SMTP_PASSWORD', envOr('SMTP_PASSWORD', ''));
+
+// Debug mode: RUN rows skip the /generate-report call entirely and go
+// straight to DONE with a bundled template PDF attached — proves the
+// dispatcher's Sheet + email plumbing independently of whether
+// geo-prospect is deployed. Set DEBUG_MODE=true on Railway to demo.
+define('DEBUG_MODE', envOr('DEBUG_MODE', '') === 'true');
+define('TEMPLATE_PDF_PATH', __DIR__ . '/template_report.pdf');
