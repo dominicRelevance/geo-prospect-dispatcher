@@ -1,7 +1,6 @@
 vendor/
 credentials/
 geo_prospect_api/
-config.php
 .DS_Store
 dispatcher.log
 reports/
