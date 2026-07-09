@@ -168,6 +168,11 @@ function configureMailer(PHPMailer $mail): void
         $mail->Username   = SMTP_USER;
         $mail->Password   = SMTP_PASSWORD;
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        // PHPMailer's default connection timeout is up to 5 minutes if the
+        // host/port is wrong or unreachable — fail fast instead so a bad
+        // SMTP config shows up as an immediate log line, not a hung cron run.
+        $mail->Timeout = 15;
+        $mail->SMTPKeepAlive = false;
     } else {
         $mail->isMail();
     }
