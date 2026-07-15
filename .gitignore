@@ -3,3 +3,7 @@ credentials/
 geo_prospect_api/
 config.php
 .DS_Store
+__pycache__/
+*.pyc
+.env
+secrets_local_only/
