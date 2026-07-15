@@ -1,13 +1,20 @@
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl openssh-client ca-certificates \
+        curl bash openssh-client ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Railway CLI — needed for `railway ssh`, the only way this dispatcher
 # reaches Alex's geo-prospect worker (it has no web server; see
 # lib/railway_exec.py for why `railway run` is NOT what we want here).
-RUN curl -fsSL https://railway.com/install.sh | sh
+# Must run via bash explicitly: Docker's RUN uses /bin/sh (dash on
+# Debian), and the installer uses bash-only ${...} substitution past the
+# "installed successfully" point — piping into `sh` fails with
+# "Bad substitution" after the binary is already in place.
+RUN curl -fsSL https://railway.com/install.sh | bash
+# The installer puts the binary at ~/.railway/bin/railway, which isn't on
+# PATH for a non-interactive process (ENTRYPOINT doesn't source .bashrc).
+ENV PATH="/root/.railway/bin:${PATH}"
 
 # Pin the expected host key for ssh.railway.com so `railway ssh` never
 # hits an interactive "are you sure you want to continue connecting"
