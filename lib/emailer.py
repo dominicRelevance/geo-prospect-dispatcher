@@ -15,7 +15,8 @@ MAILJET_SMTP_HOST = "in-v3.mailjet.com"
 MAILJET_SMTP_PORT = 587
 
 
-def send_report_email(to_email: str, client_name: str, pdf_bytes: bytes, pdf_filename: str) -> None:
+def send_report_email(to_email: str, client_name: str, pdf_bytes: bytes, pdf_filename: str,
+                       public_url: str = "") -> None:
     api_key = os.environ["MAILJET_API_KEY"]
     api_secret = os.environ["MAILJET_API_SECRET"]
     from_email = os.environ.get("MAILJET_FROM_EMAIL", "reports@relevance.digital")
@@ -26,9 +27,10 @@ def send_report_email(to_email: str, client_name: str, pdf_bytes: bytes, pdf_fil
     msg["From"] = f"{from_name} <{from_email}>"
     msg["To"] = to_email
 
+    link_line = f"\n\nYou can also download it directly: {public_url}" if public_url else ""
     body = (
-        f"Hi,\n\nYour AI Visibility Report for {client_name} is attached.\n\n"
-        f"Best,\n{from_name}"
+        f"Hi,\n\nYour AI Visibility Report for {client_name} is attached."
+        f"{link_line}\n\nBest,\n{from_name}"
     )
     msg.attach(MIMEText(body, "plain"))
 

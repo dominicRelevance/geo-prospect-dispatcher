@@ -31,7 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lib import sheets, railway_exec, emailer
+from lib import sheets, railway_exec, emailer, reports_host
 from lib.inputs_builder import build_inputs, InputsError
 
 SPREADSHEET_ID = os.environ.get(
@@ -209,13 +209,23 @@ def main() -> None:
         pdf_bytes = railway_exec.download_binary(pdf_path)
         pdf_filename = os.path.basename(pdf_path)
 
+        # Publish to reports_server for a real clickable link. Best-effort:
+        # the raw remote path (not itself a usable URL — only reachable
+        # via railway ssh) is still what lands in the sheet if this fails,
+        # so a hosting hiccup doesn't sink an otherwise-successful job.
+        public_url = ""
+        try:
+            public_url = reports_host.upload_pdf(pdf_bytes, pdf_filename)
+        except Exception as e:
+            print(f"Row {row_number}: report hosting upload failed — {e}")
+
         email = sheets.get_cell(row, col_map, *EMAIL_COL)
         if email:
-            emailer.send_report_email(email, client_name, pdf_bytes, pdf_filename)
+            emailer.send_report_email(email, client_name, pdf_bytes, pdf_filename, public_url)
             updates[PROGRESS_COL] = "DONE (emailed)"
         else:
             updates[PROGRESS_COL] = "DONE (no email address supplied)"
-        updates[PDF_COL] = pdf_path
+        updates[PDF_COL] = public_url or pdf_path
         updates[RUN_STATUS_COL] = "DONE"
     else:
         reason = sidecar.get("review_reason", "unknown failure")
