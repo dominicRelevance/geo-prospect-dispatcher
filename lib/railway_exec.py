@@ -35,6 +35,17 @@ import subprocess
 
 RAILWAY_SERVICE = os.environ.get("RAILWAY_SERVICE", "geo-prospect")
 
+# entrypoint.sh writes the dispatcher's dedicated deploy key here. Passed
+# explicitly via -i rather than relying on `railway ssh`'s default
+# ~/.ssh/ scan — that scan resolves via $HOME at runtime, which doesn't
+# reliably match this hardcoded write path inside the container (seen
+# empirically: key written successfully, then "No SSH keys found in your
+# SSH agent or ~/.ssh/" from railway ssh itself on the very next call).
+# Locally (Dominic's Mac), this path won't exist, so we fall back to
+# default discovery (agent / ~/.ssh scan), which already works there.
+RAILWAY_SSH_IDENTITY_FILE = os.environ.get(
+    "RAILWAY_SSH_IDENTITY_FILE", "/root/.ssh/id_ed25519")
+
 
 class RailwaySSHError(Exception):
     pass
@@ -43,8 +54,12 @@ class RailwaySSHError(Exception):
 def _run(args: list[str], stdin_bytes: bytes | None = None,
          timeout: int = 120) -> tuple[int, bytes, bytes]:
     remote_cmd = shlex.join(args)
+    cmd = ["railway", "ssh", "-s", RAILWAY_SERVICE]
+    if os.path.isfile(RAILWAY_SSH_IDENTITY_FILE):
+        cmd += ["-i", RAILWAY_SSH_IDENTITY_FILE]
+    cmd += ["--", remote_cmd]
     proc = subprocess.run(
-        ["railway", "ssh", "-s", RAILWAY_SERVICE, "--", remote_cmd],
+        cmd,
         input=stdin_bytes,
         capture_output=True,
         timeout=timeout,

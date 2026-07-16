@@ -4,6 +4,7 @@
 # env vars are set on the dispatcher's Railway service, not committed.
 set -e
 
+echo "[entrypoint] HOME=$HOME USER=$(whoami 2>/dev/null || echo '?')"
 echo "[entrypoint] DISPATCHER_SSH_PRIVATE_KEY: ${#DISPATCHER_SSH_PRIVATE_KEY} chars"
 echo "[entrypoint] GOOGLE_SERVICE_ACCOUNT_JSON: ${#GOOGLE_SERVICE_ACCOUNT_JSON} chars"
 
