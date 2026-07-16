@@ -83,12 +83,39 @@ def pick_row(rows: list[list[str]], col_map: dict) -> tuple[int, list[str]] | No
 
 
 def _read_latest_sidecar(client_domain: str) -> dict:
+    """geo_client.py has TWO separate failure-reporting formats, not one:
+    the newer *_audit_status.json sidecar (written for input-validation
+    failures and successful completions — emit_audit_status_sidecar), and
+    an older audit_failure_<timestamp>.json used for downstream pipeline
+    aborts (query-generation tier imbalance, sanity-score rejections,
+    etc — confirmed against a real run 2026-07-16). Both need checking;
+    the second is normalised into the same shape main() already expects
+    (overall_status/review_reason/platforms/pdf) so no caller-side
+    branching changes are needed."""
     slug = safe_domain_slug(client_domain)
     remote_dir = f"/data/client_outputs/{slug}"
+
     path = railway_exec.find_latest(remote_dir, "*_audit_status.json")
-    if not path:
-        raise RuntimeError(f"no audit_status sidecar found under {remote_dir}")
-    return json.loads(railway_exec.download_text(path))
+    if path:
+        return json.loads(railway_exec.download_text(path))
+
+    path = railway_exec.find_latest(remote_dir, "audit_failure_*.json")
+    if path:
+        failure = json.loads(railway_exec.download_text(path))
+        reason = failure.get("reason", "")
+        actionable = failure.get("actionable_message", "")
+        return {
+            "overall_status": "failed",
+            "review_reason": (
+                f"[{failure.get('stage', 'unknown stage')}] {reason}"
+                + (f" — {actionable}" if actionable else "")
+            ),
+            "platforms": {},
+            "pdf": {"status": "failed", "path": ""},
+        }
+
+    raise RuntimeError(
+        f"no audit_status sidecar or audit_failure dump found under {remote_dir}")
 
 
 def run_job(inputs: dict) -> dict:
