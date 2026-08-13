@@ -72,7 +72,7 @@ the exact source functions.
 | Namesake exclusions | `namesake_exclusion_terms` |
 | Importance of audit | not sent to geo_client.py — used by the dispatcher to pick which RUN row to process next |
 | Exhibiting at | not sent to geo_client.py — dispatcher-only context |
-| Run Status | dispatcher trigger/lock: operator sets `RUN`; dispatcher flips to `PROCESSING` on pickup, `DONE`/`ERROR` on completion |
+| Run Status | dispatcher trigger/lock: operator sets `RUN`; dispatcher flips to `PROCESSING` on pickup, then `DONE` (shipped), `NEEDS_REVIEW` (sidecar read but not a shipped success), or `ERROR` (hard crash — upload/discovery/exception) on completion |
 | Status | dispatcher-written human-readable progress |
 | PDF_report, Date | dispatcher-written output |
 | EmailReport | recipient address for the finished PDF |

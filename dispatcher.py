@@ -17,7 +17,7 @@ and run in parallel. That's accepted for now; if API costs/rate limits
 make that unacceptable later, add a mutex row/lock file.
 
 Known limitation: if the dispatcher process crashes or is killed mid-job
-(after Run Status is cleared but before the row is marked DONE/ERROR),
+(after Run Status is cleared but before the row is marked DONE/ERROR/NEEDS_REVIEW),
 that row is stuck and won't be retried automatically. Worth a stale-lock
 timeout later; not implemented in this first version.
 """
@@ -230,7 +230,7 @@ def main() -> None:
     else:
         reason = sidecar.get("review_reason", "unknown failure")
         updates[PROGRESS_COL] = f"NEEDS_REVIEW: {reason}"
-        updates[RUN_STATUS_COL] = "ERROR"
+        updates[RUN_STATUS_COL] = "NEEDS_REVIEW"
 
     sheets.update_cells(service, SPREADSHEET_ID, SHEET_NAME, row_number, col_map, updates)
     print(f"Row {row_number}: finished — {updates.get(PROGRESS_COL)}")
