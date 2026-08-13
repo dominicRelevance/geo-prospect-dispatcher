@@ -1,5 +1,5 @@
 # Geo Prospect Dispatcher — Project Notes
-_Last updated: 2026-07-15_
+_Last updated: 2026-08-13_
 
 ---
 
@@ -46,6 +46,7 @@ not preserve argv word boundaries — both confirmed empirically
 - **Railway project:** `optimistic-rebirth` (workspace `alexai-relevance's Projects`), environment `production`, service `geo-prospect` — this dispatcher targets that service via `railway ssh -s geo-prospect`.
 - **Sheets auth:** service account `geo-dispatcher@aigeoprospect.iam.gserviceaccount.com`, key at `credentials/service-account.json` (gitignored). Must have Editor access on the Jobs sheet.
 - **Email:** Mailjet SMTP relay (`in-v3.mailjet.com:587`), report PDF sent as an attachment (no PDF hosting/serving component exists now that the dispatcher isn't on SiteGround).
+- **Timeouts & cron cadence (2026-08-13):** `AUDIT_TIMEOUT_S` default raised 2700→4500 (45→75 min) — real audits run 50-60 min and were timing out before finishing, discarding a completed PDF still sitting on `/data`. `railway.json`'s `cronSchedule` widened 15 min → every 2h (`0 */2 * * *`, standard cron can't express exactly 90 min). Reason: at 15-min cadence, a single audit (10 min discovery + up to 75 min audit = up to 85 min) outlives multiple cron ticks, so overlapping invocations were driving several audits at once against the same worker — the likely cause of intermittent 504s client reported during "busy periods". 2h cadence trades that off against lower max throughput (~12 audits/day) rather than adding a proper overlap lock (see TODO).
 
 ---
 
@@ -95,12 +96,23 @@ every audit run (see architecture above).
       `railway` CLI binary available inside the dispatcher's own
       container — not currently a pip package).
 - [ ] End-to-end test against a real sheet row.
-- [ ] Concurrency: two overlapping cron ticks can pick two different RUN
-      rows and run them in parallel — fine for now, revisit if API
-      cost/rate-limits make that unacceptable.
+- [ ] Concurrency: two overlapping cron ticks can still pick two different
+      RUN rows and run them in parallel — 2h cron cadence (see Key facts)
+      makes this rarer but doesn't eliminate it if the queue backs up.
+      A proper mutex/lock would fix it without trading away throughput.
 - [ ] Stale-lock recovery: if the dispatcher process dies mid-job after
-      clearing Run Status but before writing DONE/ERROR, that row is
-      stuck. Not handled yet.
+      clearing Run Status but before writing DONE/NEEDS_REVIEW/ERROR,
+      that row is stuck. Not handled yet.
+- [ ] Google Slides output (Alex, raised 2026-08-13): geo-prospect worker
+      may switch from PDF-only to a Google Slides deck so AMs can edit
+      before sending to the client. Not started. Will need: a new sidecar
+      field (e.g. `slides_url`) since the dispatcher currently hard-codes
+      `pdf.status`/`pdf.path` as the finished-artifact contract
+      (`dispatcher.py` around `run_job`/`main`); a rethink of the
+      auto-email-on-completion step, since "AM reviews before sending"
+      is incompatible with today's immediate auto-send; and Drive/Slides
+      sharing permissions per-AM, which is a different auth surface than
+      the current no-auth `railway ssh` PDF download.
 
 ---
 
